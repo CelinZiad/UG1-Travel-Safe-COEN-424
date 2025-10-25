@@ -17,7 +17,6 @@ def fetch_chunk(api_base: str, resource_id: str, limit: int, offset: int, filter
     r.raise_for_status()
     payload = r.json()
     if not payload.get("success"):
-        # CKAN success flag
         raise RuntimeError(f"datastore_search returned success=false: {payload}")
     return payload["result"].get("records", [])
 
@@ -82,7 +81,6 @@ def try_datastore_to_ndjson(args, filters_dict: Dict[str, str]) -> Tuple[Optiona
             time.sleep(0.1)
 
     if collected == 0:
-        # Nothing came back—treat as failure and let caller remove the empty file
         try:
             os.remove(outfile)
         except OSError:
@@ -121,7 +119,6 @@ def main():
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
-    # Build filters dict from repeated --filter FIELD=VALUE args
     filters_dict: Dict[str, str] = {}
     for kv in args.filter:
         if "=" not in kv:
@@ -143,7 +140,6 @@ def main():
         print("[INFO] Trying datastore_search (paginated)…")
         outfile, total_rows = try_datastore_to_ndjson(args, filters_dict)
     except HTTPError as e:
-        # if 404 or other HTTP error, we'll fallback
         print(f"[WARN] datastore_search HTTP error: {e}. Will try resource_show fallback.")
     except Exception as e:
         print(f"[WARN] datastore_search failed: {e}. Will try resource_show fallback.")
@@ -153,7 +149,7 @@ def main():
         s3_key = f"{args.prefix}/{month}/{key_name}"
         print(f"[INFO] NDJSON ready: {outfile}  (rows={total_rows:,})")
     else:
-        # Second attempt: resource_show → url → download original file (CSV/GeoJSON)
+        # Second attempt: resource_show, url, download original file (CSV/GeoJSON)
         print("[INFO] Falling back to resource_show (direct file download)…")
         try:
             meta = resource_show(args.api_base, args.resource_id)
@@ -176,11 +172,9 @@ def main():
         download_to_file(file_url, outfile)
         print(f"[INFO] Download complete: {outfile} (datastore_active={ds_active})")
 
-        # Key uses the original filename to keep provenance
         key_name = base_name
         s3_key = f"{args.prefix}/{month}/{key_name}"
 
-    # Create S3 client (with optional profile/region)
     if args.profile or args.region:
         session = boto3.Session(profile_name=args.profile, region_name=args.region)
         s3 = session.client("s3")
@@ -191,10 +185,8 @@ def main():
     s3.upload_file(outfile, args.bucket, s3_key)
     print("[INFO] Upload complete.")
 
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"[ERROR] {e}", file=sys.stderr)
-        sys.exit(1)
+try:
+    main()
+except Exception as e:
+    print(f"[ERROR] {e}", file=sys.stderr)
+    sys.exit(1)
