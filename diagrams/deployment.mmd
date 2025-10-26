@@ -1,0 +1,31 @@
+graph TB
+  subgraph "AWS Region: ca-central-1"
+    subgraph "VPC"
+      EC2["EC2 (FastAPI)\nDocker/uvicorn"]
+      EMR["EMR Cluster (Spark)\nCore + Task nodes"]
+    end
+    S3["S3 Bucket: ug1-travel-safe-bucket\n/raw, /curated, /served"]
+    DDB["DynamoDB: TravelSafeScores\n(PK=AREA#id, SK=PERIOD#yyyymm)"]
+    IAM["IAM Roles & Policies\n(least-privilege)"]
+    APIGW["API Gateway"]
+    CW["CloudWatch Logs & Metrics"]
+  end
+
+  SwaggerHub["SwaggerHub (OpenAPI 3.0)"]
+  CKAN["Données QC / Montréal CKAN"]
+  Dev["Developer Workstation"]
+  Users["Clients / Browsers"]
+
+  Dev -- "CI/CD (GitHub Actions)" --> EC2
+  Dev -- "Submit Spark jobs" --> EMR
+  CKAN -- "HTTP" --> EC2
+  CKAN -- "HTTP" --> Dev
+  EC2 -- "GET" --> DDB
+  EC2 -- "GET" --> S3
+  EMR -- "read/write" --> S3
+  EMR -- "upsert" --> DDB
+  APIGW <---> EC2
+  Users -- "HTTPS" --> APIGW
+  EC2 --> CW
+  EMR --> CW
+  SwaggerHub <-.-> EC2
