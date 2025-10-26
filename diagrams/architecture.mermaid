@@ -1,0 +1,47 @@
+flowchart LR
+  %% --- External Sources ---
+  CKAN["CKAN APIs (Crimes, Accidents)"]
+
+  %% --- Ingestion ---
+  subgraph Ingestion
+    ING["Batch Ingest (Python: fetch_ckan_resource.py)"]
+  end
+
+  %% --- Storage (Data Lake) ---
+  subgraph "S3 Data Lake"
+    RAW["S3 /raw"]
+    CUR["S3 /curated (Parquet)"]
+    SRV["S3 /served (JSON/GeoJSON)"]
+  end
+
+  %% --- Processing ---
+  subgraph Processing
+    EMR["Spark on EMR (clean_curate.py, score_areas.py)"]
+  end
+
+  %% --- Serving/Data API ---
+  subgraph Serving
+    DDB["DynamoDB: TravelSafeScores"]
+    API["FastAPI service (/areas, /areas/{id}, /areas/{id}/scores)"]
+    GATE["API Gateway"]
+    SWG["SwaggerHub (OpenAPI 3.0)"]
+  end
+
+  %% --- Clients ---
+  subgraph Clients
+    MAP["Web Map (Leaflet/Mapbox)"]
+    CLI["Analysts / Scripts"]
+  end
+
+  CKAN -->|HTTP GET CSV/JSON/GeoJSON| ING
+  ING -->|PutObject| RAW
+  RAW -->|Read| EMR
+  EMR -->|Parquet| CUR
+  EMR -->|Scores JSON| SRV
+  EMR -->|Upsert latest| DDB
+  GATE --> API
+  API -->|GET latest/historical| DDB
+  API -->|GET static JSON| SRV
+  SWG -.->|Publish OpenAPI| API
+  MAP <-->|HTTPS| GATE
+  CLI -->|S3 Select/Download| SRV
