@@ -1,0 +1,44 @@
+sequenceDiagram
+  autonumber
+  participant Dev as "Developer"
+  participant Ingest as "Batch Ingest (Python)"
+  participant CKAN as "CKAN API"
+  participant S3 as "S3 (raw/curated/served)"
+  participant EMR as "EMR Spark"
+  participant DDB as "DynamoDB"
+  participant GW as "API Gateway"
+  participant API as "FastAPI"
+  participant User as "Client (Map/UI)"
+
+  Dev->>Ingest: run fetch_ckan_resource.py (resource_id, bucket/prefix)
+  Ingest->>CKAN: datastore_search (paginate)
+  CKAN-->>Ingest: records OR 404
+  Ingest->>CKAN: resource_show (fallback to direct file)
+  CKAN-->>Ingest: file URL (CSV/JSON/GeoJSON)
+  Ingest->>S3: PutObject to /raw/...
+
+  Dev->>EMR: submit clean_curate.py
+  EMR->>S3: read /raw/*
+  EMR->>S3: write /curated/* (Parquet)
+
+  Dev->>EMR: submit score_areas.py
+  EMR->>S3: write /served/areas_scores.json
+  EMR->>DDB: upsert {PK=AREA#id, SK=PERIOD#yyyymm, isLatest}
+
+  User->>GW: GET /areas
+  GW->>API: forward request
+  API->>DDB: Query latest by area (or list latest)
+  DDB-->>API: items (AreaScore[])
+  API-->>User: 200 AreasScores (JSON)
+
+  User->>GW: GET /areas/{id}
+  GW->>API: forward request
+  API->>DDB: Query PK=AREA#{id} ORDER BY SK DESC LIMIT 1
+  DDB-->>API: AreaScore
+  API-->>User: 200 AreaScore (JSON)
+
+  User->>GW: GET /areas/{id}/scores?from=YYYY-MM&to=YYYY-MM
+  GW->>API: forward request
+  API->>DDB: Query PK=AREA#{id} with SK range
+  DDB-->>API: AreaScore[]
+  API-->>User: 200 {areaId, items[]}

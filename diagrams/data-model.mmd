@@ -1,0 +1,52 @@
+classDiagram
+  class Area {
+    +areaId: string
+    +name: string
+    +geometry: GeoJSON  %% polygon
+    +parent?: string
+  }
+
+  class Incident {
+    +id: string
+    +occurredAt: datetime
+    +category: string
+    +lon: number
+    +lat: number
+    +areaId?: string
+    +source: string
+  }
+
+  class Accident {
+    +id: string
+    +occurredAt: datetime
+    +severity: string
+    +lon: number
+    +lat: number
+    +areaId?: string
+    +source: string
+  }
+
+  class ScoreRun {
+    +runId: string
+    +startedAt: datetime
+    +endedAt: datetime
+    +inputs: string
+    +outputs: string
+    +status: string
+  }
+
+  class AreaScore {
+    +areaId: string
+    +period: string  %% YYYY-MM
+    +safetyScore: number
+    +color: string   %% red|yellow|green
+    +crimes: int
+    +accidents: int
+    +updatedAt: datetime
+    +runId: string
+  }
+
+  Incident --> Area : "many to 1"
+  Accident --> Area : "many to 1"
+  AreaScore --> Area : "many to 1"
+  AreaScore --> ScoreRun : "many to 1"
