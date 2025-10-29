@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EMRServerlessSubmit",
+      "Effect": "Allow",
+      "Action": [
+        "emr-serverless:StartJobRun",
+        "emr-serverless:GetJobRun",
+        "emr-serverless:ListJobRuns",
+        "emr-serverless:ListApplications"
+      ],
+      "Resource": "arn:aws:emr-serverless:ca-central-1:<YOUR_ACCOUNT_ID>:/applications/<YOUR_APP_ID>"
+    },
+    {
+      "Sid": "AllowPassExecRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/TravelSafe-EMR-ExecRole",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "emr-serverless.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
