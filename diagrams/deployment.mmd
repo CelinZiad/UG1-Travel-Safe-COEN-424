@@ -2,30 +2,32 @@ graph TB
   subgraph "AWS Region: ca-central-1"
     subgraph "VPC"
       EC2["EC2 (FastAPI)\nDocker/uvicorn"]
-      EMR["EMR Cluster (Spark)\nCore + Task nodes"]
+      EMRS["EMR Serverless Application\n(Spark jobs)"]
     end
-    S3["S3 Bucket: ug1-travel-safe-bucket\n/raw, /curated, /served"]
-    DDB["DynamoDB: TravelSafeScores\n(PK=AREA#id, SK=PERIOD#yyyymm)"]
-    IAM["IAM Roles & Policies\n(least-privilege)"]
+    S3["S3 Bucket: ug1-travel-safe-bucket\n/raw, /ref, /curated, /served"]
+    DDB["DynamoDB (optional): AreaScores\n(PK=AREA#id, SK=PERIOD#yyyymm)"]
+    IAM["IAM Roles & Policies\n(least-privilege: ExecRole, S3, DDB)"]
     APIGW["API Gateway"]
     CW["CloudWatch Logs & Metrics"]
   end
 
   SwaggerHub["SwaggerHub (OpenAPI 3.0)"]
   CKAN["Données QC / Montréal CKAN"]
-  Dev["Developer Workstation"]
+  Dev["Developer Workstation (CLI)"]
   Users["Clients / Browsers"]
+  Graf["Grafana (dashboards)"]
 
   Dev -- "CI/CD (GitHub Actions)" --> EC2
-  Dev -- "Submit Spark jobs" --> EMR
-  CKAN -- "HTTP" --> EC2
+  Dev -- "Submit Spark jobs" --> EMRS
   CKAN -- "HTTP" --> Dev
+  Dev -- "fetch_ckan_resource.py" --> S3
+  EMRS -- "read/write" --> S3
+  EMRS -- "upsert" --> DDB
   EC2 -- "GET" --> DDB
   EC2 -- "GET" --> S3
-  EMR -- "read/write" --> S3
-  EMR -- "upsert" --> DDB
   APIGW <---> EC2
   Users -- "HTTPS" --> APIGW
+  Graf -- "HTTP(S) read" --> S3
   EC2 --> CW
-  EMR --> CW
+  EMRS --> CW
   SwaggerHub <-.-> EC2
