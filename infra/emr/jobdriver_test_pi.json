@@ -1,0 +1,6 @@
+{
+  "sparkSubmit": {
+    "entryPoint": "local:///usr/lib/spark/examples/src/main/python/pi.py",
+    "sparkSubmitParameters": "--conf spark.executor.instances=2 --conf spark.executor.memory=2g --conf spark.driver.memory=1g"
+  }
+}

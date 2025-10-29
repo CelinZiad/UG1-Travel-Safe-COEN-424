@@ -1,2 +1,7 @@
 .venv
 out
+.aws/
+*.key
+*.pem
+.env
+__pycache__/
