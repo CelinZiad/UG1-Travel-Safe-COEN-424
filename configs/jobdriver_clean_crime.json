@@ -1,0 +1,12 @@
+{
+  "sparkSubmit": {
+    "entryPoint": "s3://ug1-travel-safe-bucket/code/etl/10_clean_normalize.py",
+    "entryPointArguments": [
+      "--raw", "s3://ug1-travel-safe-bucket/raw/crime/*",
+      "--out", "s3://ug1-travel-safe-bucket/curated/crime",
+      "--dataset", "crime",
+      "--format", "ndjson"
+    ],
+    "sparkSubmitParameters": "--conf spark.executor.instances=2 --conf spark.executor.memory=3g --conf spark.driver.memory=2g --conf spark.driverEnv.PYTHONIOENCODING=utf-8 --conf spark.executorEnv.PYTHONIOENCODING=utf-8"
+  }
+}

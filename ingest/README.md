@@ -38,7 +38,7 @@ python ingest/fetch_ckan_resource.py   --api-base https://donnees.montreal.ca/ap
 
 ### Example Command — Québec Accident Dataset
 ```bash
-python ingest/fetch_ckan_resource.py   --api-base https://www.donneesquebec.ca/recherche/api/3/action   --resource-id b3b7f567-5473-4cb0-b1b3-534fddbbf8e2   --bucket ug1-travel-safe-bucket   --prefix raw/accidents   --dataset-name accidents_routiers   --region ca-central-1
+python ingest/fetch_ckan_resource.py   --api-base https://www.donneesquebec.ca/recherche/api/3/action   --resource-id 3957364a-f579-4bc4-987a-299708fefd3e   --bucket ug1-travel-safe-bucket   --prefix raw/car-accident   --dataset-name collisions_routieres   --region ca-central-1
 ```
 
 ---

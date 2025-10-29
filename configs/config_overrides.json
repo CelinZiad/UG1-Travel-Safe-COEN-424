@@ -1,0 +1,7 @@
+{
+  "monitoringConfiguration": {
+    "s3MonitoringConfiguration": {
+      "logUri": "s3://ug1-travel-safe-bucket/logs/"
+    }
+  }
+}
