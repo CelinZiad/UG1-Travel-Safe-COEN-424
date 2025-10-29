@@ -2,8 +2,9 @@ classDiagram
   class Area {
     +areaId: string
     +name: string
-    +geometry: GeoJSON  %% polygon
-    +parent?: string
+    +geometry: GeoJSON   %% borough polygon (from /ref)
+    +parent?: string     %% future: borough -> city
+    +source: string      %% provenance/version of REF
   }
 
   class Incident {
@@ -12,7 +13,11 @@ classDiagram
     +category: string
     +lon: number
     +lat: number
-    +areaId?: string
+    +year: string        %% partition "YYYY"
+    +month: string       %% partition "MM"
+    +boroughCode?: string
+    +boroughName?: string
+    +binId?: string      %% optional grid id
     +source: string
   }
 
@@ -22,7 +27,11 @@ classDiagram
     +severity: string
     +lon: number
     +lat: number
-    +areaId?: string
+    +year: string
+    +month: string
+    +boroughCode?: string
+    +boroughName?: string
+    +binId?: string
     +source: string
   }
 
@@ -30,23 +39,24 @@ classDiagram
     +runId: string
     +startedAt: datetime
     +endedAt: datetime
-    +inputs: string
-    +outputs: string
+    +inputs: string      %% S3 paths / code version
+    +outputs: string     %% S3 paths / table
     +status: string
+    +rowCounts: string   %% metrics JSON
   }
 
   class AreaScore {
     +areaId: string
-    +period: string  %% YYYY-MM
+    +period: string      %% YYYY-MM
     +safetyScore: number
-    +color: string   %% red|yellow|green
+    +color: string       %% red|yellow|green
     +crimes: int
     +accidents: int
     +updatedAt: datetime
     +runId: string
   }
 
-  Incident --> Area : "many to 1"
-  Accident --> Area : "many to 1"
+  Incident --> Area : "many to 1 (via boroughCode)"
+  Accident --> Area : "many to 1 (via boroughCode)"
   AreaScore --> Area : "many to 1"
   AreaScore --> ScoreRun : "many to 1"

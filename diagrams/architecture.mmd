@@ -8,20 +8,25 @@ flowchart LR
   end
 
   %% --- Storage (Data Lake) ---
-  subgraph "S3 Data Lake"
-    RAW["S3 /raw"]
-    CUR["S3 /curated (Parquet)"]
-    SRV["S3 /served (JSON/GeoJSON)"]
+  subgraph "S3 Data Lake (ug1-travel-safe-bucket)"
+    RAW["/raw"]
+    REF["/ref (boroughs.geojson WGS84)"]
+    CUR["/curated (Parquet)"]
+    CURA["/curated/*_areas (joined to boroughs)"]
+    SRV["/served (JSON for apps/dashboards)"]
   end
 
   %% --- Processing ---
   subgraph Processing
-    EMR["Spark on EMR (clean_curate.py, score_areas.py)"]
+    EMR["Spark on EMR Serverless"]
+    CLEAN["10_clean_normalize.py (crime, accidents)"]
+    JOIN["20_join_areas.py (point-in-borough + optional grid)"]
+    AGG["30_aggregate_scores.py (optional)"]
   end
 
   %% --- Serving/Data API ---
   subgraph Serving
-    DDB["DynamoDB: TravelSafeScores"]
+    DDB["DynamoDB (optional): AreaScores"]
     API["FastAPI service (/areas, /areas/{id}, /areas/{id}/scores)"]
     GATE["API Gateway"]
     SWG["SwaggerHub (OpenAPI 3.0)"]
@@ -30,18 +35,32 @@ flowchart LR
   %% --- Clients ---
   subgraph Clients
     MAP["Web Map (Leaflet/Mapbox)"]
+    GRAF["Grafana Geomaps"]
     CLI["Analysts / Scripts"]
   end
 
+  %% --- Flow ---
   CKAN -->|HTTP GET CSV/JSON/GeoJSON| ING
   ING -->|PutObject| RAW
+  ING -->|PutObject| REF
+
   RAW -->|Read| EMR
-  EMR -->|Parquet| CUR
-  EMR -->|Scores JSON| SRV
-  EMR -->|Upsert latest| DDB
+  EMR --> CLEAN
+  CLEAN -->|Parquet| CUR
+
+  CUR -->|Read + REF polygons| JOIN
+  JOIN -->|Parquet| CURA
+  JOIN -->|JSON exports| SRV
+
+  CURA -->|Read| AGG
+  AGG -->|Scores JSON| SRV
+  AGG -->|Upsert latest| DDB
+
   GATE --> API
   API -->|GET latest/historical| DDB
   API -->|GET static JSON| SRV
   SWG -.->|Publish OpenAPI| API
+
   MAP <-->|HTTPS| GATE
+  GRAF -->|HTTPS read| SRV
   CLI -->|S3 Select/Download| SRV
