@@ -1,66 +1,70 @@
-flowchart LR
-  %% --- External Sources ---
-  CKAN["CKAN APIs (Crimes, Accidents)"]
+flowchart TB
 
-  %% --- Ingestion ---
-  subgraph Ingestion
-    ING["Batch Ingest (Python: fetch_ckan_resource.py)"]
-  end
+%% --- External Sources ---
+subgraph Sources
+  direction TB
+  CKAN["CKAN APIs<br/>(Crimes, Accidents)"]
+end
 
-  %% --- Storage (Data Lake) ---
-  subgraph "S3 Data Lake (ug1-travel-safe-bucket)"
-    RAW["/raw"]
-    REF["/ref (boroughs.geojson WGS84)"]
-    CUR["/curated (Parquet)"]
-    CURA["/curated/*_areas (joined to boroughs)"]
-    SRV["/served (JSON for apps/dashboards)"]
-  end
+%% --- Ingestion ---
+subgraph Ingestion
+  direction TB
+  ING["Batch Ingest<br/>(fetch_ckan_resource.py)"]
+end
 
-  %% --- Processing ---
-  subgraph Processing
-    EMR["Spark on EMR Serverless"]
-    CLEAN["10_clean_normalize.py (crime, accidents)"]
-    JOIN["20_join_areas.py (point-in-borough + optional grid)"]
-    AGG["30_aggregate_scores.py (optional)"]
-  end
+%% --- Storage (Data Lake) ---
+subgraph "S3 Data Lake<br/>(ug1-travel-safe-bucket)"
+  direction TB
+  RAW["/raw"]
+  REF["/ref<br/>(boroughs.geojson, WGS84)"]
+  CUR["/curated<br/>(Parquet)"]
+  CURA["/curated/*_areas<br/>(joined to boroughs)"]
+  SRV["/served<br/>(JSON for apps/dashboards)"]
+end
 
-  %% --- Serving/Data API ---
-  subgraph Serving
-    DDB["DynamoDB (optional): AreaScores"]
-    API["FastAPI service (/areas, /areas/{id}, /areas/{id}/scores)"]
-    GATE["API Gateway"]
-    SWG["SwaggerHub (OpenAPI 3.0)"]
-  end
+%% --- Processing ---
+subgraph Processing
+  direction TB
+  EMR["EMR Serverless<br/>(Spark)"]
+  JOBS["Spark Jobs<br/>Clean → Join → Aggregate"]
+end
 
-  %% --- Clients ---
-  subgraph Clients
-    MAP["Web Map (Leaflet/Mapbox)"]
-    GRAF["Grafana Geomaps"]
-    CLI["Analysts / Scripts"]
-  end
+%% --- Serving/Data API ---
+subgraph Serving
+  direction TB
+  GATE["API Gateway"]
+  API["FastAPI<br/>(/areas, /areas/{id}, /areas/{id}/scores)"]
+  DDB["DynamoDB<br/>(AreaScores, optional)"]
+  SWG["SwaggerHub<br/>(OpenAPI 3.0)"]
+end
 
-  %% --- Flow ---
-  CKAN -->|HTTP GET CSV/JSON/GeoJSON| ING
-  ING -->|PutObject| RAW
-  ING -->|PutObject| REF
+%% --- Clients ---
+subgraph Clients
+  direction TB
+  MAP["Web Map<br/>(Leaflet/Mapbox)"]
+  GRAF["Grafana<br/>Geomaps"]
+  CLI["Analysts<br/>Scripts"]
+end
 
-  RAW -->|Read| EMR
-  EMR --> CLEAN
-  CLEAN -->|Parquet| CUR
+%% --- Flow ---
+CKAN -->|HTTP GET<br/>CSV/JSON/GeoJSON| ING
+ING -->|PutObject| RAW
+ING -->|PutObject| REF
 
-  CUR -->|Read + REF polygons| JOIN
-  JOIN -->|Parquet| CURA
-  JOIN -->|JSON exports| SRV
+RAW --> EMR
+REF --> EMR
+EMR --> JOBS
 
-  CURA -->|Read| AGG
-  AGG -->|Scores JSON| SRV
-  AGG -->|Upsert latest| DDB
+JOBS -->|Parquet| CUR
+JOBS -->|Join polygons| CURA
+JOBS -->|JSON exports| SRV
+JOBS -->|Upsert latest| DDB
 
-  GATE --> API
-  API -->|GET latest/historical| DDB
-  API -->|GET static JSON| SRV
-  SWG -.->|Publish OpenAPI| API
+GATE --> API
+API -->|GET latest/<br/>historical| DDB
+API -->|GET static JSON| SRV
+SWG -.->|Publish OpenAPI| API
 
-  MAP <-->|HTTPS| GATE
-  GRAF -->|HTTPS read| SRV
-  CLI -->|S3 Select/Download| SRV
+MAP <-->|HTTPS| GATE
+GRAF -->|HTTPS read| SRV
+CLI -->|S3 Select/<br/>Download| SRV

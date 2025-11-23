@@ -1,0 +1,53 @@
+sequenceDiagram
+  autonumber
+
+  actor Dev as Developer
+  participant Ingest as Data Ingestion
+  participant CKAN as CKAN API
+  participant S3 as S3 Data Lake
+  participant EMR as EMR Serverless (Spark)
+  participant DDB as DynamoDB
+  participant GW as API Gateway
+  participant API as FastAPI Service
+  actor User as Client (Map/UI)
+  participant Graf as Grafana Dashboard
+
+  Note right of S3: Buckets: /raw, /ref, /curated, /served
+  Note over DDB: Optional — used for quick API responses
+
+  %% --- Ingestion Phase ---
+  Dev->>Ingest: Trigger data ingestion job
+  Ingest->>CKAN: Fetch datasets (crime, accidents)
+  CKAN-->>Ingest: JSON or GeoJSON data
+  Ingest->>S3: Store raw data under /raw
+  Ingest->>S3: Upload reference files (boroughs, etc.)
+
+  %% --- ETL Phase ---
+  Dev->>EMR: Submit Spark job
+  EMR->>S3: Read from /raw and /ref
+  EMR-->>S3: Write cleaned and normalized data to /curated
+  EMR-->>S3: Export results to /served
+  EMR-->>DDB: Update area safety scores
+
+  %% --- Serving Phase ---
+  User->>GW: GET /areas
+  GW->>API: Forward request
+  alt Use DynamoDB
+      API->>DDB: Query latest scores
+      DDB-->>API: Return area scores
+  else Use static data
+      API->>S3: Read /served/areas.json
+      S3-->>API: Return JSON
+  end
+  API-->>GW: Response (200 OK)
+  GW-->>User: Display safety data
+
+  User->>GW: GET /areas/{id}/scores?range=YYYY-MM
+  GW->>API: Forward request
+  API->>DDB: Query historical scores
+  DDB-->>API: Return list of scores
+  API-->>User: Send time-series data
+
+  %% --- Visualization Phase ---
+  Graf->>S3: Fetch served data (GeoJSON/JSON)
+  S3-->>Graf: Return datasets for visualization
