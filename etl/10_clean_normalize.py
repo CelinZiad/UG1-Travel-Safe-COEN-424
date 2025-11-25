@@ -8,8 +8,12 @@ def sanitize(name: str) -> str:
 
 def infer_format(path: str) -> str:
     p = path.lower()
-    if any(ext in p for ext in [".ndjson", ".json", ".geojson"]):
+    if p.endswith(".ndjson"):
+        # Newline-delimited JSON (one JSON object per line)
         return "ndjson"
+    if p.endswith(".geojson") or p.endswith(".json"):
+        # Regular JSON / GeoJSON
+        return "json"
     return "csv"
 
 def read_raw(spark, path, fmt, sep):
@@ -21,6 +25,12 @@ def read_raw(spark, path, fmt, sep):
                 .option("escape", "\"")
                 .option("sep", sep)
                 .csv(path))
+
+    if fmt == "ndjson":
+        # NDJSON: one JSON object per line → no multiLine
+        return spark.read.json(path)
+
+    # Regular JSON / GeoJSON: allow pretty-printed multi-line JSON
     df = (spark.read
             .option("multiLine", True)
             .json(path))
@@ -28,7 +38,6 @@ def read_raw(spark, path, fmt, sep):
     if "features" in lower:
         df = df.select(F.explode("features").alias("f")).select("f.properties.*")
     return df
-
 
 def normalize_columns(df):
     for c in df.columns:
@@ -60,8 +69,15 @@ def profile_crime(df, min_lat, max_lat, min_lon, max_lon):
           .where((F.col("lon") >= min_lon) & (F.col("lon") <= max_lon))
           .where(F.col("event_date").isNotNull()))
 
-    df = df.select("categorie","quart","pdq","event_date","lat","lon")
-    df = df.dropDuplicates(["event_date","pdq","lat","lon","categorie"])
+    # Keep French values but rename columns to English
+    df = df.select("categorie", "quart", "pdq", "event_date", "lat", "lon")
+
+    df = (df
+          .withColumnRenamed("categorie", "category")
+          .withColumnRenamed("quart", "time_of_day")
+          .withColumnRenamed("pdq", "police_district"))
+
+    df = df.dropDuplicates(["event_date", "police_district", "lat", "lon", "category"])
     return df
 
 def profile_accidents(df, min_lat, max_lat, min_lon, max_lon):
@@ -86,8 +102,16 @@ def profile_accidents(df, min_lat, max_lat, min_lon, max_lon):
           .where(F.col("event_date").isNotNull()))
 
     df = df.where(F.col("mrc").rlike(r"Montr[eé]al\s*\(66"))
-    df = df.select("gravite","cd_muncp","event_date","lat","lon","mrc")
-    df = df.dropDuplicates(["event_date","cd_muncp","lat","lon","gravite"])
+
+    # Keep French values but rename columns to English
+    df = df.select("gravite", "cd_muncp", "event_date", "lat", "lon", "mrc")
+
+    df = (df
+          .withColumnRenamed("gravite", "severity")
+          .withColumnRenamed("cd_muncp", "municipality_code")
+          .withColumnRenamed("mrc", "mrc_name"))
+
+    df = df.dropDuplicates(["event_date", "municipality_code", "lat", "lon", "severity"])
 
     return df
 
@@ -117,19 +141,31 @@ def main():
         df = profile_accidents(df, args.min_lat, args.max_lat, args.min_lon, args.max_lon)
 
     df = (df
-          .withColumn("year",  F.date_format("event_date","yyyy"))
-          .withColumn("month", F.date_format("event_date","MM")))
+          .withColumn("year",  F.date_format("event_date", "yyyy"))
+          .withColumn("month", F.date_format("event_date", "MM")))
+
+    year_month_counts = (
+        df.groupBy("year", "month")
+          .count()
+          .orderBy("year", "month")
+    )
 
     out = args.out.rstrip("/") + "/"
+
+    (year_month_counts
+        .write
+        .mode("overwrite")
+        .json(out + "_metrics/year_month_counts/"))
+
     (df.repartition(1, "year", "month")
        .write.mode("overwrite")
-       .partitionBy("year","month")
+       .partitionBy("year", "month")
        .parquet(out))
 
     spark.createDataFrame([{
         "dataset": args.dataset,
         "row_count": df.count()
-    }]).write.mode("append").json(out + "_metrics/")
+    }]).write.mode("overwrite").json(out + "_metrics/summary/")
 
     print(f"[OK] {args.dataset} -> {out}")
 
