@@ -7,6 +7,11 @@ info:
     name: Travel Safe Team
     email: celine.ziade@outlook.com
   version: 0.1.0
+
+servers:
+  - url: "http://ec2-99-79-43-150.ca-central-1.compute.amazonaws.com:8000"
+    description: "EC2 deployment (prod)"
+    
 paths:
   /areas:
     get:
