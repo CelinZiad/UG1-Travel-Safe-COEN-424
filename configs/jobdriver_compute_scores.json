@@ -1,0 +1,11 @@
+{
+    "sparkSubmit": {
+        "entryPoint": "s3://ug1-travel-safe-bucket/code/etl/30_compute_scores.py",
+        "entryPointArguments": [
+            "--crimes", "s3://ug1-travel-safe-bucket/curated/crime_areas/",
+            "--accidents", "s3://ug1-travel-safe-bucket/curated/accidents_areas/",
+            "--out", "s3://ug1-travel-safe-bucket/served/scores/"
+        ],
+        "sparkSubmitParameters": "--conf spark.executor.cores=4 --conf spark.executor.memory=8g --conf spark.driver.cores=2 --conf spark.driver.memory=4g"
+    }
+}

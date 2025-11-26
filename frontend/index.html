@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Safe - Montreal Safety Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Travel Safe</h1>
+            <p>Montreal Area Safety Analysis</p>
+        </header>
+
+        <div id="main-container">
+            <aside id="sidebar">
+                <div class="panel">
+                    <h2>Safety Scores</h2>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <span class="color-box green"></span>
+                            <span>Safe (70-100)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="color-box yellow"></span>
+                            <span>Moderate (40-69)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="color-box red"></span>
+                            <span>Caution (0-39)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Area List</h2>
+                    <div id="area-list"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>Ask About Safety</h2>
+                    <div class="input-group">
+                        <input type="text" id="question-input" placeholder="e.g., Is downtown safe at night?">
+                        <button id="ask-btn">Ask</button>
+                    </div>
+                    <div id="answer-box"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>Selected Area</h2>
+                    <div id="area-detail">
+                        <p class="placeholder">Click an area on the map</p>
+                    </div>
+                </div>
+            </aside>
+
+            <main id="map-container">
+                <div id="map"></div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
