@@ -1,0 +1,23 @@
+{
+  "TableName": "TravelSafeScores",
+  "AttributeDefinitions": [
+    { "AttributeName": "pk", "AttributeType": "S" },
+    { "AttributeName": "sk", "AttributeType": "S" },
+    { "AttributeName": "gsi1sk", "AttributeType": "S" }
+  ],
+  "KeySchema": [
+    { "AttributeName": "pk", "KeyType": "HASH" },
+    { "AttributeName": "sk", "KeyType": "RANGE" }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "gsi1",
+      "KeySchema": [
+        { "AttributeName": "pk", "KeyType": "HASH" },
+        { "AttributeName": "gsi1sk", "KeyType": "RANGE" }
+      ],
+      "Projection": { "ProjectionType": "ALL" }
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
+}
