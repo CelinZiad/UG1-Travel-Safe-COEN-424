@@ -1,6 +1,6 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Link(BaseModel):
@@ -15,6 +15,8 @@ class Links(BaseModel):
 
 
 class AreaScore(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str = Field(description="Area identifier, e.g. BOROUGH#Westmount")
     areaName: str
     borough_code: str
@@ -27,10 +29,13 @@ class AreaScore(BaseModel):
     numIncidentsAccidents: int
     safetyScore: float
     colour: str
-    _links: Links
+    # Internal name `links`, JSON name `_links`
+    links: Links = Field(alias="_links")
 
 
 class AreaSummary(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     areaName: str
     borough_code: str
@@ -38,20 +43,24 @@ class AreaSummary(BaseModel):
     quart: str
     safetyScore: float
     colour: str
-    _links: Links
+    links: Links = Field(alias="_links")
 
 
 class AreaListResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     items: List[AreaSummary]
     total: int
     limit: int
     offset: int
-    _links: Dict[str, Link]
+    links: Dict[str, Link] = Field(alias="_links")
 
 
 class AreaHistoryResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     areaName: str
     borough_code: str
     scores: List[AreaScore]
-    _links: Dict[str, Link]
+    links: Dict[str, Link] = Field(alias="_links")

@@ -41,7 +41,7 @@ def get_latest_scores(
                 quart=score.quart,
                 safetyScore=score.safetyScore,
                 colour=score.colour,
-                _links=score._links,
+                links=score.links,
             )
         )
 
@@ -50,7 +50,7 @@ def get_latest_scores(
         total=len(summaries),
         limit=len(summaries),
         offset=0,
-        _links={
+        links={
             "self": Link(href=f"/scores/latest?quart={quart}"),
         },
     )

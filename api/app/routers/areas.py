@@ -33,6 +33,7 @@ def _item_to_area_score(item: dict) -> AreaScore:
         collection=Link(href="/areas"),
     )
 
+    # NOTE: we pass links=links (no underscore)
     return AreaScore(
         id=area_id,
         areaName=item["areaName"],
@@ -46,7 +47,7 @@ def _item_to_area_score(item: dict) -> AreaScore:
         numIncidentsAccidents=int(item.get("numIncidentsAccidents", 0)),
         safetyScore=float(item.get("safetyScore", 0.0)),
         colour=item.get("colour", "GREY"),
-        _links=links,
+        links=links,
     )
 
 
@@ -67,13 +68,11 @@ def list_areas(
     List all areas (18 boroughs) with their latest safety score
     for a given time-of-day bucket (quart).
     """
-    # Scan is fine for small dataset (18 boroughs * 3 quarts)
     resp = table.scan(
         FilterExpression=Attr("isLatest").eq(True) & Attr("quart").eq(quart)
     )
     items: List[dict] = resp.get("Items", [])
 
-    # Stable ordering
     items_sorted = sorted(items, key=lambda it: it.get("areaName", ""))
 
     paged = items_sorted[offset : offset + limit]
@@ -89,33 +88,35 @@ def list_areas(
                 quart=score.quart,
                 safetyScore=score.safetyScore,
                 colour=score.colour,
-                _links=score._links,
+                # HERE: links=score.links instead of _links=score._links
+                links=score.links,
             )
         )
 
     base_query = f"/areas?quart={quart}"
     self_href = f"{base_query}&limit={limit}&offset={offset}"
 
-    links = {
+    list_links = {
         "self": Link(href=self_href),
         "first": Link(href=base_query),
     }
     if offset + limit < len(items_sorted):
-        links["next"] = Link(
+        list_links["next"] = Link(
             href=f"{base_query}&limit={limit}&offset={offset + limit}"
         )
     if offset > 0:
         prev_offset = max(0, offset - limit)
-        links["prev"] = Link(
+        list_links["prev"] = Link(
             href=f"{base_query}&limit={limit}&offset={prev_offset}"
         )
 
+    # HERE: links=list_links (no underscore)
     return AreaListResponse(
         items=summaries,
         total=len(items_sorted),
         limit=limit,
         offset=offset,
-        _links=links,
+        links=list_links,
     )
 
 
@@ -134,7 +135,6 @@ def get_area(
 
     Metadata + latest safety score for a given area and quart.
     """
-    # Small table: scan by areaId + isLatest + quart
     resp = table.scan(
         FilterExpression=(
             Attr("areaId").eq(area_id)
@@ -180,11 +180,10 @@ def get_area_scores(
     from_period = to_period(from_)
     to_period = to_period(to)
 
-    # Query all PERIOD# rows for this area, then filter in Python.
     resp = table.query(
         KeyConditionExpression=Key("pk").eq(area_id)
         & Key("sk").begins_with("PERIOD#"),
-        ScanIndexForward=True,  # oldest -> newest
+        ScanIndexForward=True,
     )
     items = resp.get("Items", [])
 
@@ -208,12 +207,13 @@ def get_area_scores(
     scores = [_item_to_area_score(it) for it in filtered]
     first = scores[0]
 
+    # NOTE: links=..., not _links=...
     return AreaHistoryResponse(
         id=area_id,
         areaName=first.areaName,
         borough_code=first.borough_code,
         scores=scores,
-        _links={
+        links={
             "self": Link(href=f"/areas/{area_id}/scores"),
             "area": Link(href=f"/areas/{area_id}"),
         },
