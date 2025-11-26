@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-
+from .routers import areas, scores
 
 settings = get_settings()
 
@@ -21,8 +21,7 @@ app = FastAPI(
     },
 )
 
-
-# ---- CORS (will matter later for the frontend, but safe to enable now) ----
+# CORS for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
@@ -31,8 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Routers
+app.include_router(areas.router)
+app.include_router(scores.router)
 
-# ---- Health endpoint (TASK 6.1) ----
+
 @app.get("/health", tags=["health"])
 def health():
     """
@@ -53,13 +55,14 @@ def health():
     }
 
 
-# Placeholder root, optional
 @app.get("/", include_in_schema=False)
 def root():
     return {
         "message": "Travel Safe API",
         "_links": {
             "health": {"href": "/health"},
+            "areas": {"href": "/areas"},
+            "scores_latest": {"href": "/scores/latest"},
             "docs": {"href": "/docs"},
         },
     }
