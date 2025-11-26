@@ -26,17 +26,30 @@ def read_raw(spark, path, fmt, sep):
                 .option("sep", sep)
                 .csv(path))
 
+    # JSON / NDJSON: always read JSON first
     if fmt == "ndjson":
         # NDJSON: one JSON object per line → no multiLine
-        return spark.read.json(path)
+        df = spark.read.json(path)
+    else:
+        # Regular JSON / GeoJSON: allow pretty-printed multi-line JSON
+        df = (spark.read
+              .option("multiLine", True)
+              .json(path))
 
-    # Regular JSON / GeoJSON: allow pretty-printed multi-line JSON
-    df = (spark.read
-            .option("multiLine", True)
-            .json(path))
+    # At this point df columns can be:
+    # - ["type", "features", ...] for a FeatureCollection
+    # - ["type", "geometry", "properties", ...] for one Feature per row
+    # - already flat (normal JSON)
+
     lower = [c.lower() for c in df.columns]
+
     if "features" in lower:
+        # FeatureCollection: { "type": "FeatureCollection", "features": [...] }
         df = df.select(F.explode("features").alias("f")).select("f.properties.*")
+    elif "properties" in lower:
+        # One Feature per row: { "type": "Feature", "geometry": ..., "properties": { ... } }
+        df = df.select("properties.*")
+
     return df
 
 def normalize_columns(df):
@@ -85,7 +98,7 @@ def profile_accidents(df, min_lat, max_lat, min_lon, max_lon):
     Keep: gravite, cd_muncp, loc_long/loc_lat -> lon/lat, dt_accdn -> event_date
     Only rows where MRC matches Montréal (66)
     """
-    needed = {"gravite","cd_muncp","loc_long","loc_lat","dt_accdn","mrc"}
+    needed = {"gravite","cd_muncp","loc_long","loc_lat","dt_accdn","mrc", "heure_accdn"}
     miss = [c for c in needed if c not in df.columns]
     if miss:
         raise ValueError(f"accidents: missing columns {miss}; have {df.columns}")
@@ -102,9 +115,29 @@ def profile_accidents(df, min_lat, max_lat, min_lon, max_lon):
           .where(F.col("event_date").isNotNull()))
 
     df = df.where(F.col("mrc").rlike(r"Montr[eé]al\s*\(66"))
-
+    
     # Keep French values but rename columns to English
-    df = df.select("gravite", "cd_muncp", "event_date", "lat", "lon", "mrc")
+    df = df.select("gravite", "cd_muncp", "event_date", "lat", "lon", "mrc", "heure_accdn")
+
+    # Extract start hour as integer
+    start_part = F.split(F.col("heure_accdn"), "-")[0]  # "15:00:00" from "15:00:00-15:59:00"
+    start_hour = F.substring(start_part, 1, 2).cast("int")  # 15
+
+    df = df.withColumn(
+        "quart",
+        F.when(
+            start_hour.isNull(),  # e.g. "Non précisé"
+            F.lit("nuit")
+        ).when(
+            (start_hour >= 6) & (start_hour < 12),
+            F.lit("jour")
+        ).when(
+            (start_hour >= 12) & (start_hour < 18),
+            F.lit("soir")
+        ).otherwise(
+            F.lit("nuit")
+        )
+    )
 
     df = (df
           .withColumnRenamed("gravite", "severity")
