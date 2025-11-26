@@ -14,8 +14,8 @@ class Settings:
     aws_region: str = os.getenv("AWS_REGION", "ca-central-1")
     scores_table_name: str = os.getenv("SCORES_TABLE_NAME", "TravelSafeScores")
 
-    # (For later) AI model, etc.
-    hf_model: str = os.getenv("HF_MODEL", "distilbert-base-uncased")
+    # Local Hugging Face model (Transformers)
+    hf_local_model: str = os.getenv("HF_LOCAL_MODEL", "distilgpt2")
 
 
 @lru_cache

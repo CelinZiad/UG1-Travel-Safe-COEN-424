@@ -1,3 +1,3 @@
-from . import areas, scores
+from . import areas, scores, ai
 
-__all__ = ["areas", "scores"]
+__all__ = ["areas", "scores", "ai"]

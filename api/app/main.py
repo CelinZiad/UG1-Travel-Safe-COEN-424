@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import areas, scores
+from .routers import areas, scores, ai
 
 settings = get_settings()
 
@@ -33,6 +33,7 @@ app.add_middleware(
 # Routers
 app.include_router(areas.router)
 app.include_router(scores.router)
+app.include_router(ai.router)
 
 
 @app.get("/health", tags=["health"])
@@ -63,6 +64,9 @@ def root():
             "health": {"href": "/health"},
             "areas": {"href": "/areas"},
             "scores_latest": {"href": "/scores/latest"},
+            "advice": {"href": "/advice/{id}"},
+            "analyze_route": {"href": "/analyze-route"},
+            "ask": {"href": "/ask"},
             "docs": {"href": "/docs"},
         },
     }
