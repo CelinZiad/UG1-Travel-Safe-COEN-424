@@ -2,11 +2,35 @@
 
 // Explicit mapping for tricky names
 const NAME_ALIASES = {
-  'sudouest': 'lesudouest',
-  'stleonard': 'stleonard',
+  'lesudouest': 'sudouest',
+  'rosemontlapetitepatrie': 'rosemontlapetitepatrie', // Map API's single hyphen/space to double hyphen normalized
   'saintleonard': 'stleonard',
   'montrealest': 'montrealest',
-  'rosemontlapetitepatrie': 'rosemontlapetitepatrie'
+  'lilesoeurs': 'verduniledessoeurs',
+  'iledessoeurs': 'verduniledessoeurs',
+  'verdun': 'verduniledessoeurs',
+  'tetreaultville': 'mercierhochelagamaisonneuve',
+  'mercier': 'mercierhochelagamaisonneuve',
+  'hochelaga': 'mercierhochelagamaisonneuve',
+  'maisonneuve': 'mercierhochelagamaisonneuve',
+  'longuepointe': 'mercierhochelagamaisonneuve',
+  'nouveaubordeaux': 'ahuntsiccartierville',
+  'cartierville': 'ahuntsiccartierville',
+  'ahuntsic': 'ahuntsiccartierville',
+  'saintmichel': 'villeraysaintmichelparcextension',
+  'parcextension': 'villeraysaintmichelparcextension',
+  'villeray': 'villeraysaintmichelparcextension',
+  'cotedesneiges': 'cotedesneigesnotredamedegrace',
+  'notredamedegrace': 'cotedesneigesnotredamedegrace',
+  'ndg': 'cotedesneigesnotredamedegrace',
+  'rivieredespraries': 'pointeauxtremblesrivieresdesprairies',
+  'pointeauxtrembles': 'pointeauxtremblesrivieresdesprairies',
+  'rdp': 'pointeauxtremblesrivieresdesprairies',
+  'pat': 'pointeauxtremblesrivieresdesprairies',
+  'ilebizard': 'lilebizardsaintegenevieve',
+  'saintegenevieve': 'lilebizardsaintegenevieve',
+  'pierrefonds': 'pierrefondsroxboro',
+  'roxboro': 'pierrefondsroxboro'
 }
 
 // Normalize string for matching (remove accents, lowercase, remove special chars)
@@ -42,11 +66,13 @@ export function findMatchingArea(geoName, areas) {
   if (!areas || areas.length === 0) return null
 
   const normalizedGeo = normalizeString(geoName)
+  console.log(`Matching '${geoName}' (normalized: '${normalizedGeo}') against ${areas.length} areas`)
 
   // Try exact normalized match first
   for (const area of areas) {
     const areaName = area.areaName || area.id.replace('BOROUGH#', '')
     if (normalizeString(areaName) === normalizedGeo) {
+      console.log('Exact match found:', areaName)
       return area
     }
   }
@@ -56,21 +82,11 @@ export function findMatchingArea(geoName, areas) {
     const areaName = area.areaName || area.id.replace('BOROUGH#', '')
     const normalizedArea = normalizeString(areaName)
     if (normalizedGeo.includes(normalizedArea) || normalizedArea.includes(normalizedGeo)) {
+      console.log('Partial match found:', areaName)
       return area
     }
   }
 
-  // Try matching significant segments (at least 5 chars)
-  for (const area of areas) {
-    const areaName = area.areaName || area.id.replace('BOROUGH#', '')
-    const normalizedArea = normalizeString(areaName)
-    for (let i = 0; i <= normalizedGeo.length - 5; i++) {
-      const segment = normalizedGeo.substring(i, i + 5)
-      if (segment.length >= 5 && normalizedArea.includes(segment)) {
-        return area
-      }
-    }
-  }
-
+  // Segment matching removed as it causes false positives (e.g. Montreal-Nord -> Montreal-Est)
   return null
 }

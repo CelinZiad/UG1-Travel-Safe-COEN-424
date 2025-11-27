@@ -5,3 +5,8 @@ out
 *.pem
 .env
 __pycache__/
+
+# Frontend
+node_modules/
+dist/
+.DS_Store
